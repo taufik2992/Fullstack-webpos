@@ -1,27 +1,27 @@
-const Order = require('../models/Order');
-const Menu = require('../models/Menu');
-const { validationResult } = require('express-validator');
-const mongoose = require('mongoose');
+const Order = require("../models/Order");
+const Menu = require("../models/Menu");
+const { validationResult } = require("express-validator");
+const mongoose = require("mongoose");
 
 const getAllOrders = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      status, 
+    const {
+      page = 1,
+      limit = 10,
+      status,
       paymentMethod,
       cashierId,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortBy = "createdAt",
+      sortOrder = "desc",
     } = req.query;
-    
+
     const query = {};
     if (status) query.status = status;
     if (paymentMethod) query.paymentMethod = paymentMethod;
     if (cashierId) query.cashierId = cashierId;
 
     const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
 
     const orders = await Order.find(query)
       .limit(limit * 1)
@@ -37,14 +37,14 @@ const getAllOrders = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
-    console.error('Get all orders error:', error);
+    console.error("Get all orders error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -57,19 +57,19 @@ const getOrderById = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order not found'
+        message: "Order not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      order
+      order,
     });
   } catch (error) {
-    console.error('Get order error:', error);
+    console.error("Get order error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -84,12 +84,13 @@ const createOrder = async (req, res) => {
       await session.abortTransaction();
       return res.status(400).json({
         success: false,
-        message: 'Validation error',
-        errors: errors.array()
+        message: "Validation error",
+        errors: errors.array(),
       });
     }
 
-    const { items, customerName, customerPhone, notes, paymentMethod } = req.body;
+    const { items, customerName, customerPhone, notes, paymentMethod } =
+      req.body;
 
     // Validate and calculate order
     let total = 0;
@@ -97,12 +98,12 @@ const createOrder = async (req, res) => {
 
     for (const item of items) {
       const menuItem = await Menu.findById(item.menuItemId).session(session);
-      
+
       if (!menuItem) {
         await session.abortTransaction();
         return res.status(400).json({
           success: false,
-          message: `Menu item with ID ${item.menuItemId} not found`
+          message: `Menu item with ID ${item.menuItemId} not found`,
         });
       }
 
@@ -110,7 +111,7 @@ const createOrder = async (req, res) => {
         await session.abortTransaction();
         return res.status(400).json({
           success: false,
-          message: `${menuItem.name} is currently not available`
+          message: `${menuItem.name} is currently not available`,
         });
       }
 
@@ -118,7 +119,7 @@ const createOrder = async (req, res) => {
         await session.abortTransaction();
         return res.status(400).json({
           success: false,
-          message: `Insufficient stock for ${menuItem.name}. Available: ${menuItem.stock}`
+          message: `Insufficient stock for ${menuItem.name}. Available: ${menuItem.stock}`,
         });
       }
 
@@ -129,7 +130,7 @@ const createOrder = async (req, res) => {
         menuItemId: item.menuItemId,
         quantity: item.quantity,
         price: menuItem.price,
-        subtotal
+        subtotal,
       });
 
       // Update stock
@@ -145,28 +146,28 @@ const createOrder = async (req, res) => {
       customerName,
       customerPhone,
       notes,
-      paymentMethod: paymentMethod || 'cash',
-      status: 'pending'
+      paymentMethod: paymentMethod || "cash",
+      status: "pending",
     });
 
     await order.save({ session });
     await session.commitTransaction();
 
     // Populate the order for response
-    await order.populate('cashierId', 'nama email role');
-    await order.populate('items.menuItemId', 'name price category');
+    await order.populate("cashierId", "nama email role");
+    await order.populate("items.menuItemId", "name price category");
 
     res.status(201).json({
       success: true,
-      message: 'Order created successfully',
-      order
+      message: "Order created successfully",
+      order,
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('Create order error:', error);
+    console.error("Create order error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   } finally {
     session.endSession();
@@ -178,11 +179,11 @@ const updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const validStatuses = ['pending', 'processing', 'completed', 'cancelled'];
+    const validStatuses = ["pending", "processing", "completed", "cancelled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid status'
+        message: "Invalid status",
       });
     }
 
@@ -195,20 +196,20 @@ const updateOrderStatus = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order not found'
+        message: "Order not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Order status updated successfully',
-      order
+      message: "Order status updated successfully",
+      order,
     });
   } catch (error) {
-    console.error('Update order status error:', error);
+    console.error("Update order status error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -216,7 +217,7 @@ const updateOrderStatus = async (req, res) => {
 const getOrderStats = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     const matchStage = {};
     if (startDate || endDate) {
       matchStage.createdAt = {};
@@ -230,27 +231,27 @@ const getOrderStats = async (req, res) => {
         $group: {
           _id: null,
           totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: '$total' },
-          averageOrderValue: { $avg: '$total' },
+          totalRevenue: { $sum: "$total" },
+          averageOrderValue: { $avg: "$total" },
           ordersByStatus: {
             $push: {
-              status: '$status',
-              total: '$total'
-            }
-          }
-        }
-      }
+              status: "$status",
+              total: "$total",
+            },
+          },
+        },
+      },
     ]);
 
     const statusStats = await Order.aggregate([
       { $match: matchStage },
       {
         $group: {
-          _id: '$status',
+          _id: "$status",
           count: { $sum: 1 },
-          totalValue: { $sum: '$total' }
-        }
-      }
+          totalValue: { $sum: "$total" },
+        },
+      },
     ]);
 
     res.status(200).json({
@@ -258,15 +259,15 @@ const getOrderStats = async (req, res) => {
       stats: stats[0] || {
         totalOrders: 0,
         totalRevenue: 0,
-        averageOrderValue: 0
+        averageOrderValue: 0,
       },
-      statusBreakdown: statusStats
+      statusBreakdown: statusStats,
     });
   } catch (error) {
-    console.error('Get order stats error:', error);
+    console.error("Get order stats error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -276,5 +277,5 @@ module.exports = {
   getOrderById,
   createOrder,
   updateOrderStatus,
-  getOrderStats
+  getOrderStats,
 };
